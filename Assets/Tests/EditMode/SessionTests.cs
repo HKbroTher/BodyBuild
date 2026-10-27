@@ -201,6 +201,19 @@ namespace MassFactory.Tests
         }
 
         [Test]
+        public void SubmittingLastAthleteShortOfThreshold_IsFlagged_AndEndsRun()
+        {
+            var config = TestHelpers.Config(100000);
+            config.Roster.NewAthletesPerRound = 2;
+            var session = TestHelpers.NewSession(config);
+            Assert.IsFalse(session.SubmitWouldEndRun(session.Roster[0]), "another athlete is still available");
+            session.Submit(session.Roster[0].AthleteID);
+            Assert.IsTrue(session.SubmitWouldEndRun(session.Roster[0]));
+            session.Submit(session.Roster[0].AthleteID);
+            Assert.AreEqual(RunPhase.GameOver, session.Phase);
+        }
+
+        [Test]
         public void CompletingFinalRound_WinsTheRun()
         {
             var session = TestHelpers.NewSession(TestHelpers.Config(500, 500));

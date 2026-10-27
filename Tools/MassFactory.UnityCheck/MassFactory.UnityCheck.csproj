@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Compile-only check of the Unity presentation layer (Assets/Scripts/Runtime) against the
+    UnityEngine 2021.3 reference assemblies from NuGet. It does not run anything; it only catches
+    API and syntax errors when the Unity Editor is not available. Editor scripts are not covered.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssetTargetFallback>net45;net46;net461;net472</AssetTargetFallback>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(RepoRoot)Assets/Scripts/Runtime/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../MassFactory.Core/MassFactory.Core.csproj" />
+  </ItemGroup>
+</Project>

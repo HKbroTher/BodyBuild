@@ -1,0 +1,19 @@
+{
+    "name": "MassFactory.Editor",
+    "rootNamespace": "MassFactory.EditorTools",
+    "references": [
+        "MassFactory.Core",
+        "MassFactory.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

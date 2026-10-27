@@ -131,6 +131,13 @@ namespace MassFactory.Core
             return athlete != null && athlete.IsActive && !Competition.ThresholdMet && ActiveAthleteCount == 1;
         }
 
+        /// <summary>True when submitting this athlete leaves no athletes while the requirement is still unmet.</summary>
+        public bool SubmitWouldEndRun(AthleteData athlete)
+        {
+            return athlete != null && athlete.IsActive && ActiveAthleteCount == 1 &&
+                   ScoreCalculator.SaturatingAdd(Competition.SubmittedScore, athlete.CurrentScore) < Competition.RequiredScore;
+        }
+
         public string WhyCannotInject(AthleteData athlete)
         {
             return CommonAthleteCheck(athlete);

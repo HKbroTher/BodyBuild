@@ -22,10 +22,29 @@ namespace MassFactory.Sim
             long seed = args.Length > 1 ? long.Parse(args[1]) : 12345;
             string output = args.Length > 2 ? args[2] : null;
 
-            var config = GameConfig.CreateDefault();
             var catalog = RelicCatalog.CreateDefault();
             var sb = new StringBuilder();
+            sb.AppendLine(FullReport("Tuned default (GameConfig.CreateDefault)", GameConfig.CreateDefault(), catalog, runs, seed));
+            sb.AppendLine(FullReport("Spec baseline (GameConfig.CreateSpecBaseline)", GameConfig.CreateSpecBaseline(), catalog, runs, seed));
 
+            string text = sb.ToString();
+            Console.WriteLine(text);
+            if (!string.IsNullOrEmpty(output))
+            {
+                File.WriteAllText(output, text);
+                Console.WriteLine("Report written to " + output);
+            }
+            return 0;
+        }
+
+        private static string FullReport(string title, GameConfig config, RelicCatalog catalog, int runs, long seed)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("# " + title);
+            sb.AppendLine();
+            sb.AppendLine("Thresholds: " + Thresholds(config) + "; recruits/round " + config.Roster.NewAthletesPerRound +
+                          "; roster cap " + config.Roster.RosterCapacity + "; rush threshold " + config.Rush.ActivationThreshold + ".");
+            sb.AppendLine();
             sb.AppendLine("## Single athlete analysis (no relics, no rush)");
             sb.AppendLine();
             sb.AppendLine(SingleAthleteTable(config, 200000, seed));
@@ -33,9 +52,10 @@ namespace MassFactory.Sim
             var strategies = new List<Func<ISimulationStrategy>>
             {
                 () => RiskThresholdStrategy.Conservative(),
+                () => RiskThresholdStrategy.Balanced(),
                 () => RiskThresholdStrategy.Aggressive(),
                 () => new ScoreTargetStrategy(),
-                () => new ScoreTargetStrategy { SacrificeSurplusKeep = 1 },
+                () => new RiskThresholdStrategy("Conservative", 15) { SacrificeSurplusKeep = 1 },
             };
 
             var reports = new List<SimulationReport>();
@@ -43,8 +63,7 @@ namespace MassFactory.Sim
             foreach (var factory in strategies) reports.Add(runner.Run(factory, runs, seed));
 
             var noShop = new SimulationRunner(config, catalog) { ScenarioName = "No shop" };
-            reports.Add(noShop.Run(() => new RiskThresholdStrategy("Conservative", 15) { UseShop = false }, runs, seed));
-            reports.Add(noShop.Run(() => new RiskThresholdStrategy("Aggressive", 35) { UseShop = false }, runs, seed));
+            reports.Add(noShop.Run(() => new RiskThresholdStrategy("Balanced", 25) { UseShop = false }, runs, seed));
             reports.Add(noShop.Run(() => new ScoreTargetStrategy { UseShop = false }, runs, seed));
 
             // Stress test: every relic at once (ignores slot cap) to look for infinite loops / runaway values.
@@ -53,12 +72,12 @@ namespace MassFactory.Sim
                 ScenarioName = "All relics",
                 SetupSession = s => { foreach (var relic in catalog.All) s.Relics.Add(relic); }
             };
-            reports.Add(allRelics.Run(() => new ScoreTargetStrategy { UseShop = false }, runs, seed));
+            reports.Add(allRelics.Run(() => new RiskThresholdStrategy("Balanced", 25) { UseShop = false }, runs, seed));
             reports.Add(allRelics.Run(() => new RiskThresholdStrategy("Aggressive", 35) { UseShop = false }, runs, seed));
 
             sb.AppendLine("## Full run simulation (" + runs + " runs per row, seeds " + seed + ".." + (seed + runs - 1) + ")");
             sb.AppendLine();
-            sb.AppendLine("Strategies:");
+            sb.AppendLine("Strategies (all buy the best-ranked affordable relic and use the rush when the next destroy chance is >= 12%):");
             sb.AppendLine();
             foreach (var factory in strategies)
             {
@@ -68,9 +87,9 @@ namespace MassFactory.Sim
             sb.AppendLine();
             sb.AppendLine(SimulationReportFormatter.ToMarkdown(reports, config));
 
-            sb.AppendLine("Where runs die (round number of the failed competition):");
+            sb.AppendLine("Where runs die (share of all runs failing at each competition):");
             sb.AppendLine();
-            sb.AppendLine("| Strategy | Scenario | " + RoundHeader(config) + "|");
+            sb.AppendLine("| Strategy | Scenario | " + RoundHeader(config));
             sb.AppendLine("|---|---|" + Repeat("---:|", config.Competitions.Count));
             foreach (var r in reports)
             {
@@ -91,18 +110,17 @@ namespace MassFactory.Sim
                               ", action-cap hits = " + r.ActionCapHits + ", stalled runs = " + r.StalledRuns);
             sb.AppendLine();
 
-            var aggressive = reports[1];
+            var aggressive = reports.Find(r => r.StrategyName == "Aggressive" && r.Scenario == "Shop on");
             sb.AppendLine(SimulationReportFormatter.HistogramMarkdown("Aggressive (shop on): MassLevel at destruction",
                 aggressive.DestroyedAtLevel, aggressive.DestroyedAthletes));
+            return sb.ToString();
+        }
 
-            string text = sb.ToString();
-            Console.WriteLine(text);
-            if (!string.IsNullOrEmpty(output))
-            {
-                File.WriteAllText(output, text);
-                Console.WriteLine("Report written to " + output);
-            }
-            return 0;
+        private static string Thresholds(GameConfig config)
+        {
+            var parts = new List<string>();
+            foreach (var c in config.Competitions) parts.Add(c.RequiredScore.ToString("N0"));
+            return string.Join(" / ", parts.ToArray());
         }
 
         /// <summary>Quick tuning sweep: win rate and round reach of several config variants.</summary>
@@ -205,7 +223,7 @@ namespace MassFactory.Sim
         {
             var sb = new StringBuilder();
             for (int i = 0; i < config.Competitions.Count; i++) sb.Append("R").Append(i + 1).Append(" | ");
-            return sb.ToString();
+            return sb.ToString().TrimEnd();
         }
 
         private static string Repeat(string s, int n)

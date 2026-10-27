@@ -32,3 +32,7 @@ crashlytics-build.properties
 Tools/**/bin/
 Tools/**/obj/
 TestResults/
+
+# Python bytecode (Blender tool scripts)
+__pycache__/
+*.pyc

@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <!-- Unity 2022.3+/6 compiles C# 9; keep tool builds on the same language level. -->
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\</RepoRoot>
+  </PropertyGroup>
+</Project>
